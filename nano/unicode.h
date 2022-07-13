@@ -230,7 +230,7 @@ inline std::wstring to_wide(string_view s);
 /*!
  * @brief   Generalization of a std::basic_string_view that accepts any char type.
  *
- * @details The mts::unicode::string_view describes an object that can refer to a constant
+ * @details The nano::unicode::string_view describes an object that can refer to a constant
  *          contiguous sequence of any char-like objects with the first element of
  *          the sequence at position zero.
  *
@@ -249,19 +249,19 @@ inline std::wstring to_wide(string_view s);
  *
  * @code
  *   // In example.h
- *   void drawText(mts::unicode::string_view text);
- *   void setText(mts::unicode::string_view text);
+ *   void drawText(nano::unicode::string_view text);
+ *   void setText(nano::unicode::string_view text);
  *
  *   // In example.cpp
- *   void drawText(mts::unicode::string_view text) {
+ *   void drawText(nano::unicode::string_view text) {
  *     switch(text.encoding()) {
- *       case mts::unicode::string_view::UTF8:
+ *       case nano::unicode::string_view::utf8:
  *         drawUtf8Text(text.u8view());
  *         break;
- *       case mts::unicode::string_view::UTF16:
+ *       case nano::unicode::string_view::utf16:
  *         drawUtf16Text(text.u16view());
  *         break;
- *       case mts::unicode::string_view::UTF32:
+ *       case nano::unicode::string_view::utf32:
  *         drawUtf32Text(text.u32view());
  *         break;
  *     }
@@ -273,7 +273,7 @@ inline std::wstring to_wide(string_view s);
  *   void setTextMac(const std::string&) { ... }
  *   #endif
  *
- *   void setText(mts::unicode::string_view text) {
+ *   void setText(nano::unicode::string_view text) {
  *     #ifdef _WIN32
  *     setTextWindows(text.to_wide());
  *     #else
@@ -304,7 +304,7 @@ inline std::wstring to_wide(string_view s);
 class string_view {
 public:
   /// Default constructor.
-  /// Creates an empty string view of char type (UTF8).
+  /// Creates an empty string view of char type (utf8).
   inline string_view() noexcept;
 
   /// Constructor.
@@ -1420,38 +1420,6 @@ inline auto iterate(const SType& str) {
   return detail::iterator_range<basic_iterator<string_char_type_t<SType>, SType, typename SType::const_iterator>>(str);
 }
 
-// template <typename SType,
-//     std::enable_if_t<std::is_constructible<SType, std::string_view>::value, std::nullptr_t> = nullptr>
-// inline auto iterate(const SType& str) {
-//   return detail::iterator_range<basic_iterator<char, SType, typename SType::const_iterator>>(str);
-// }
-//
-//#ifdef NANO_UNICODE_CPP_20
-// template <typename SType,
-//     std::enable_if_t<std::is_constructible<SType, std::u8string_view>::value, std::nullptr_t> = nullptr>
-// inline auto iterate(const SType& str) {
-//   return detail::iterator_range<basic_iterator<char8_t, SType, typename SType::const_iterator>>(str);
-// }
-//#endif // NANO_UNICODE_CPP_20
-//
-// template <typename SType,
-//     std::enable_if_t<std::is_constructible<SType, std::u16string_view>::value, std::nullptr_t> = nullptr>
-// inline auto iterate(const SType& str) {
-//   return detail::iterator_range<basic_iterator<char16_t, SType, typename SType::const_iterator>>(str);
-// }
-//
-// template <typename SType,
-//     std::enable_if_t<std::is_constructible<SType, std::u32string_view>::value, std::nullptr_t> = nullptr>
-// inline auto iterate(const SType& str) {
-//   return detail::iterator_range<basic_iterator<char32_t, SType, typename SType::const_iterator>>(str);
-// }
-//
-// template <typename SType,
-//     std::enable_if_t<std::is_constructible<SType, std::wstring_view>::value, std::nullptr_t> = nullptr>
-// inline auto iterate(const SType& str) {
-//   return detail::iterator_range<basic_iterator<wchar_t, SType, typename SType::const_iterator>>(str);
-// }
-
 template <class IteratorType>
 class iterator : private detail::iterator_base_type<IteratorType> {
   using base_type = detail::iterator_base_type<IteratorType>;
@@ -1625,28 +1593,23 @@ encoding string_view::encoding() const noexcept {
 template <typename CharT, std::enable_if_t<is_char_type<CharT>::value, std::nullptr_t>>
 const CharT* string_view::c_str() const noexcept {
   if constexpr (std::is_same_v<CharT, char>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(char) && m_nullTerminated, "Wrong char type");
     return (m_charSize == sizeof(char) && m_nullTerminated) ? m_data.c8 : nullptr;
   }
 
   else if constexpr (std::is_same_v<CharT, char16_t>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(char16_t) && m_nullTerminated, "Wrong char type");
     return (m_charSize == sizeof(char16_t) && m_nullTerminated) ? m_data.c16 : nullptr;
   }
 
   else if constexpr (std::is_same_v<CharT, char32_t>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(char32_t) && m_nullTerminated, "Wrong char type");
     return (m_charSize == sizeof(char32_t) && m_nullTerminated) ? m_data.c32 : nullptr;
   }
 
   else if constexpr (std::is_same_v<CharT, wchar_t>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(wchar_t) && m_nullTerminated, "Wrong char type");
     return (m_charSize == sizeof(wchar_t) && m_nullTerminated) ? m_data.cw() : nullptr;
   }
 
   else {
     // Should never happen.
-    //    mts_error("Wrong char type");
     return nullptr;
   }
 }
@@ -1654,28 +1617,23 @@ const CharT* string_view::c_str() const noexcept {
 template <typename CharT, std::enable_if_t<is_char_type<CharT>::value, std::nullptr_t>>
 const CharT* string_view::data() const noexcept {
   if constexpr (std::is_same_v<CharT, char>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(char), "Wrong char type");
     return (m_charSize == sizeof(char)) ? m_data.c8 : nullptr;
   }
 
   else if constexpr (std::is_same_v<CharT, char16_t>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(char16_t), "Wrong char type");
     return (m_charSize == sizeof(char16_t)) ? m_data.c16 : nullptr;
   }
 
   else if constexpr (std::is_same_v<CharT, char32_t>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(char32_t), "Wrong char type");
     return (m_charSize == sizeof(char32_t)) ? m_data.c32 : nullptr;
   }
 
   else if constexpr (std::is_same_v<CharT, wchar_t>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(wchar_t), "Wrong char type");
     return (m_charSize == sizeof(wchar_t)) ? m_data.cw() : nullptr;
   }
 
   else {
     // Should never happen.
-    //    mts_error("Wrong char type");
     return nullptr;
   }
 }
@@ -1685,28 +1643,23 @@ std::basic_string<CharT> string_view::str() const {
   using stype = std::basic_string<CharT>;
 
   if constexpr (std::is_same_v<CharT, char>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(char), "Wrong char type");
     return (m_charSize == sizeof(char)) ? stype(m_data.c8, m_size) : stype();
   }
 
   else if constexpr (std::is_same_v<CharT, char16_t>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(char16_t), "Wrong char type");
     return (m_charSize == sizeof(char16_t)) ? stype(m_data.c16, m_size) : stype();
   }
 
   else if constexpr (std::is_same_v<CharT, char32_t>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(char32_t), "Wrong char type");
     return (m_charSize == sizeof(char32_t)) ? stype(m_data.c32, m_size) : stype();
   }
 
   else if constexpr (std::is_same_v<CharT, wchar_t>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(wchar_t), "Wrong char type");
     return (m_charSize == sizeof(wchar_t)) ? stype(m_data.cw(), m_size) : stype();
   }
 
   else {
     // Should never happen.
-    //    mts_error("Wrong char type");
     return stype();
   }
 }
@@ -1716,28 +1669,23 @@ std::basic_string_view<CharT> string_view::view() const {
   using svtype = std::basic_string_view<CharT>;
 
   if constexpr (std::is_same_v<CharT, char>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(char), "Wrong char type");
     return (m_charSize == sizeof(char)) ? svtype(m_data.c8, m_size) : svtype();
   }
 
   else if constexpr (std::is_same_v<CharT, char16_t>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(char16_t), "Wrong char type");
     return (m_charSize == sizeof(char16_t)) ? svtype(m_data.c16, m_size) : svtype();
   }
 
   else if constexpr (std::is_same_v<CharT, char32_t>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(char32_t), "Wrong char type");
     return (m_charSize == sizeof(char32_t)) ? svtype(m_data.c32, m_size) : svtype();
   }
 
   else if constexpr (std::is_same_v<CharT, wchar_t>) {
-    //    MTS_UNICODE_STRING_VIEW_ASSERT(m_charSize == sizeof(wchar_t), "Wrong char type");
     return (m_charSize == sizeof(wchar_t)) ? svtype(m_data.cw(), m_size) : svtype();
   }
 
   else {
     // Should never happen.
-    //    mts_error("Wrong char type");
     return svtype();
   }
 }
@@ -1779,7 +1727,6 @@ auto string_view::make(T&& s) {
 
   else {
     // Should never happen.
-    // mts_error("Wrong char type");
     return string_view();
   }
 }

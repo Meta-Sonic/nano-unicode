@@ -5,21 +5,22 @@ namespace {
 namespace utf = nano::unicode;
 
 inline constexpr const char* getTestString();
+inline constexpr const char16_t* getTestUTF16String();
+inline constexpr const char32_t* getTestUTF32String();
+inline constexpr const wchar_t* getTestWString();
+
 #ifdef NANO_UNICODE_CPP_20
   #define CPP20_EXPECT_TRUE(X) EXPECT_TRUE(X)
   #define CPP20_EXPECT_EQ(A, B) EXPECT_EQ(A, B)
   #define IF_CPP20(X) X
 
 inline constexpr const char8_t* getTestUTF8String();
+
 #else
   #define CPP20_EXPECT_TRUE(X)
   #define CPP20_EXPECT_EQ(A, B)
   #define IF_CPP20(X)
-
 #endif
-inline constexpr const char16_t* getTestUTF16String();
-inline constexpr const char32_t* getTestUTF32String();
-inline constexpr const wchar_t* getTestWString();
 
 TEST_CASE("nano-unicode", core, "unicode_traits") {
   // is_char_type.
@@ -349,7 +350,6 @@ TEST_CASE("nano-unicode", unicode_u8_iterator) {
   }
 
 #ifdef NANO_UNICODE_CPP_20
-
   {
     std::u8string s = getTestUTF8String();
     std::size_t length = utf::length(s);

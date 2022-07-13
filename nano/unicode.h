@@ -36,6 +36,7 @@
 #include <array>
 #include <algorithm>
 #include <iterator>
+#include <memory>
 #include <type_traits>
 #include <string>
 #include <string_view>

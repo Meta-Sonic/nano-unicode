@@ -40,46 +40,67 @@
 #include <string>
 #include <string_view>
 
-#pragma clang diagnostic push
+#ifdef _MSC_VER
+  #define NANO_UNICODE_MSVC_PRAGMA(X) __pragma(X)
+#else
+  #define NANO_UNICODE_MSVC_PRAGMA(X)
+#endif
 
-#pragma clang diagnostic warning "-Weverything"
-#pragma clang diagnostic ignored "-Wc++98-compat"
+#ifdef __clang__
+  #define NANO_UNICODE_CLANG_PRAGMA(X) _Pragma(X)
+#else
+  #define NANO_UNICODE_CLANG_PRAGMA(X)
+#endif
+
+#define NANO_UNICODE_MSVC_DIAGNOSTIC_PUSH() NANO_UNICODE_MSVC_PRAGMA(warning(push))
+#define NANO_UNICODE_MSVC_DIAGNOSTIC_POP() NANO_UNICODE_MSVC_PRAGMA(warning(pop))
+#define NANO_UNICODE_MSVC_PUSH_WARNING(X)                                                                              \
+  NANO_UNICODE_MSVC_DIAGNOSTIC_PUSH() NANO_UNICODE_MSVC_PRAGMA(warning(disable : X))
+#define NANO_UNICODE_MSVC_POP_WARNING() NANO_UNICODE_MSVC_DIAGNOSTIC_POP()
+
+#define NANO_UNICODE_CLANG_DIAGNOSTIC_PUSH() NANO_UNICODE_CLANG_PRAGMA("clang diagnostic push")
+#define NANO_UNICODE_CLANG_DIAGNOSTIC_POP() NANO_UNICODE_CLANG_PRAGMA("clang diagnostic pop")
+#define NANO_UNICODE_CLANG_DIAGNOSTIC(TYPE, X)                                                                         \
+  NANO_UNICODE_CLANG_PRAGMA(NANO_UNICODE_STRINGIFY(clang diagnostic TYPE X))
+
+#define NANO_UNICODE_CLANG_PUSH_WARNING(X)                                                                             \
+  NANO_UNICODE_CLANG_DIAGNOSTIC_PUSH() NANO_UNICODE_CLANG_PRAGMA(NANO_UNICODE_STRINGIFY(clang diagnostic ignored X))
+
+#define NANO_UNICODE_CLANG_POP_WARNING() NANO_UNICODE_CLANG_DIAGNOSTIC_POP()
+
+#define NANO_UNICODE_CONCAT1(_X, _Y) _X##_Y
+#define NANO_UNICODE_CONCAT(_X, _Y) NANO_UNICODE_CONCAT1(_X, _Y)
+
+#define NANO_UNICODE_STRINGIFY(X) NANO_UNICODE_STR(X)
+#define NANO_UNICODE_STR(X) #X
 
 #ifdef _MSVC_LANG
-  #define UNICODE_CPP_VERSION _MSVC_LANG
+  #define NANO_UNICODE_CPP_VERSION _MSVC_LANG
 #elif defined(__cplusplus)
-  #define UNICODE_CPP_VERSION __cplusplus
+  #define NANO_UNICODE_CPP_VERSION __cplusplus
 #else
   #warning Unknown C++ version
 #endif
 
-#if UNICODE_CPP_VERSION >= 202002L
-  #define UNICODE_CPP_20
+#if NANO_UNICODE_CPP_VERSION >= 202002L
+  #define NANO_UNICODE_CPP_20
 
-namespace utf {
+namespace nano::unicode {
 template <class T>
 using remove_cvref_t = std::remove_cvref_t<T>;
-} // namespace utf.
+} // namespace nano::unicode.
 
-#elif UNICODE_CPP_VERSION >= 201703L
-
-namespace utf {
+#elif NANO_UNICODE_CPP_VERSION >= 201703L
+namespace nano::unicode {
 template <class T>
 using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
-} // namespace utf.
+} // namespace nano::unicode.
 
-  #ifdef UNICODE_DECLARE_CHAR8_T
-using char8_t = char;
-namespace std {
-using u8string = std::string;
-using u8string_view = std::string_view;
-} // namespace std
-  #endif // UNICODE_DECLARE_CHAR8_T.
 #else
-  #error C++ version not supported
+  #error nano-unicode only supports C++17 and higher
 #endif
 
-namespace utf {
+namespace nano::unicode {
 
 ///
 ///
@@ -195,19 +216,15 @@ class basic_iterator;
 class string_view;
 
 /// Converts any string type to a utf8 std::string.
-/// @remarks On Windows, functions from stringapiset.h are used for convertion.
 inline std::string to_utf8(string_view s);
 
 /// Converts any string type to a utf16 std::u16string.
-/// @remarks On Windows, functions from stringapiset.h are used for convertion.
 inline std::u16string to_utf16(string_view s);
 
 /// Converts any string type to a utf32 std::u32string.
-/// @remarks On Windows, functions from stringapiset.h are used for convertion.
 inline std::u32string to_utf32(string_view s);
 
 /// Converts any string type to a std::wstring.
-/// @remarks On Windows, functions from stringapiset.h are used for convertion.
 inline std::wstring to_wide(string_view s);
 
 /*!
@@ -438,19 +455,15 @@ public:
   inline std::wstring_view wview() const noexcept;
 
   /// Converts the character array to a utf8 std::string.
-  /// @remarks On Windows, functions from stringapiset.h are used for convertion.
   inline std::string to_utf8() const;
 
   /// Converts the character array to a utf16 std::u16string.
-  /// @remarks On Windows, functions from stringapiset.h are used for convertion.
   inline std::u16string to_utf16() const;
 
   /// Converts the character array to a utf32 std::u32string.
-  /// @remarks On Windows, functions from stringapiset.h are used for convertion.
   inline std::u32string to_utf32() const;
 
   /// Converts the character array to a std::wstring.
-  /// @remarks On Windows, functions from stringapiset.h are used for convertion.
   inline std::wstring to_wide() const;
 
 private:
@@ -471,6 +484,7 @@ private:
   std::uint32_t m_size;
   int m_charSize;
   bool m_nullTerminated;
+  char m_reserved[7];
 
   struct normal_tag {};
 
@@ -507,7 +521,7 @@ struct is_char_type : std::bool_constant<std::is_same<char, std::remove_cv_t<Cha
                           || std::is_same<char16_t, std::remove_cv_t<CharT>>::value //
                           || std::is_same<char32_t, std::remove_cv_t<CharT>>::value //
                           || std::is_same<wchar_t, std::remove_cv_t<CharT>>::value //
-#ifdef UNICODE_CPP_20
+#ifdef NANO_UNICODE_CPP_20
                           || std::is_same<char8_t, std::remove_cv_t<CharT>>::value
 #endif
                           > {
@@ -518,7 +532,7 @@ struct is_string_type : std::bool_constant<std::is_constructible<std::string_vie
                             || std::is_constructible<std::u16string_view, SType>::value //
                             || std::is_constructible<std::u32string_view, SType>::value //
                             || std::is_constructible<std::wstring_view, SType>::value //
-#ifdef UNICODE_CPP_20
+#ifdef NANO_UNICODE_CPP_20
                             || std::is_constructible<std::u8string_view, SType>::value
 #endif
                             > {
@@ -572,33 +586,33 @@ struct string_char_type {
 
 template <class SType>
 struct string_char_type<SType,
-    std::enable_if_t<std::is_constructible<std::basic_string_view<char>, utf::remove_cvref_t<SType>>::value>> {
+    std::enable_if_t<std::is_constructible<std::basic_string_view<char>, unicode::remove_cvref_t<SType>>::value>> {
   using type = char;
 };
 
-#ifdef UNICODE_CPP_20
+#ifdef NANO_UNICODE_CPP_20
 template <class SType>
 struct string_char_type<SType,
     std::enable_if_t<std::is_constructible<std::basic_string_view<char8_t>, unicode::remove_cvref_t<SType>>::value>> {
   using type = char8_t;
 };
-#endif // UNICODE_CPP_20
+#endif // NANO_UNICODE_CPP_20
 
 template <class SType>
 struct string_char_type<SType,
-    std::enable_if_t<std::is_constructible<std::basic_string_view<char16_t>, utf::remove_cvref_t<SType>>::value>> {
+    std::enable_if_t<std::is_constructible<std::basic_string_view<char16_t>, unicode::remove_cvref_t<SType>>::value>> {
   using type = char16_t;
 };
 
 template <class SType>
 struct string_char_type<SType,
-    std::enable_if_t<std::is_constructible<std::basic_string_view<char32_t>, utf::remove_cvref_t<SType>>::value>> {
+    std::enable_if_t<std::is_constructible<std::basic_string_view<char32_t>, unicode::remove_cvref_t<SType>>::value>> {
   using type = char32_t;
 };
 
 template <class SType>
 struct string_char_type<SType,
-    std::enable_if_t<std::is_constructible<std::basic_string_view<wchar_t>, utf::remove_cvref_t<SType>>::value>> {
+    std::enable_if_t<std::is_constructible<std::basic_string_view<wchar_t>, unicode::remove_cvref_t<SType>>::value>> {
   using type = wchar_t;
 };
 
@@ -681,10 +695,7 @@ namespace detail {
     return lead < 0x80 ? 1 : (lead >> 5) == 0x6 ? 2 : (lead >> 4) == 0xE ? 3 : (lead >> 3) == 0x1E ? 4 : 0;
   }
 
-  inline constexpr std::size_t u16_sequence_length(char16_t c) noexcept {
-    std::uint32_t cp = detail::cast_16(c);
-    return is_high_surrogate(cp) ? 2 : 1;
-  }
+  inline constexpr std::size_t u16_sequence_length(char16_t c) noexcept { return is_high_surrogate(c) ? 2 : 1; }
 
   template <typename u8_iterator>
   inline constexpr bool starts_with_bom(u8_iterator it, u8_iterator end) noexcept {
@@ -695,27 +706,29 @@ namespace detail {
 
 template <typename u8_iterator>
 inline u8_iterator append_u32_to_u8(std::uint32_t cp, u8_iterator it) {
+  using ctype = detail::output_iterator_value_type_t<u8_iterator>;
+
   // 1 byte.
   if (cp < 0x80) {
-    *it++ = detail::cast_8(cp);
+    *it++ = static_cast<ctype>(cp);
   }
   // 2 bytes.
   else if (cp < 0x800) {
-    *it++ = detail::cast_8((cp >> 6) | 0xC0);
-    *it++ = detail::cast_8((cp & 0x3F) | 0x80);
+    *it++ = static_cast<ctype>((cp >> 6) | 0xC0);
+    *it++ = static_cast<ctype>((cp & 0x3F) | 0x80);
   }
   // 3 bytes.
   else if (cp < 0x10000) {
-    *it++ = detail::cast_8((cp >> 12) | 0xE0);
-    *it++ = detail::cast_8(((cp >> 6) & 0x3F) | 0x80);
-    *it++ = detail::cast_8((cp & 0x3F) | 0x80);
+    *it++ = static_cast<ctype>((cp >> 12) | 0xE0);
+    *it++ = static_cast<ctype>(((cp >> 6) & 0x3F) | 0x80);
+    *it++ = static_cast<ctype>((cp & 0x3F) | 0x80);
   }
   // 4 bytes.
   else {
-    *it++ = detail::cast_8((cp >> 18) | 0xF0);
-    *it++ = detail::cast_8(((cp >> 12) & 0x3F) | 0x80);
-    *it++ = detail::cast_8(((cp >> 6) & 0x3F) | 0x80);
-    *it++ = detail::cast_8((cp & 0x3F) | 0x80);
+    *it++ = static_cast<ctype>((cp >> 18) | 0xF0);
+    *it++ = static_cast<ctype>(((cp >> 12) & 0x3F) | 0x80);
+    *it++ = static_cast<ctype>(((cp >> 6) & 0x3F) | 0x80);
+    *it++ = static_cast<ctype>((cp & 0x3F) | 0x80);
   }
 
   return it;
@@ -745,7 +758,7 @@ inline std::uint32_t next_u8_to_u32(u8_iterator& it) {
   std::uint32_t cp = detail::cast_8(*it);
 
   using difference_type = typename std::iterator_traits<u8_iterator>::difference_type;
-  difference_type length = detail::sequence_length(*it);
+  difference_type length = static_cast<difference_type>(detail::sequence_length(static_cast<std::uint8_t>(*it)));
 
   switch (length) {
   case 1:
@@ -812,8 +825,10 @@ std::size_t u8_to_u16_length(u8_iterator start, u8_iterator end) {
 
 template <typename u32_iterator, typename u8_iterator>
 u32_iterator u8_to_u32(u8_iterator start, u8_iterator end, u32_iterator outputIt) {
+  using ctype = detail::output_iterator_value_type_t<u32_iterator>;
+
   while (start < end) {
-    *outputIt++ = next_u8_to_u32(start);
+    *outputIt++ = static_cast<ctype>(next_u8_to_u32(start));
   }
 
   return outputIt;
@@ -821,9 +836,10 @@ u32_iterator u8_to_u32(u8_iterator start, u8_iterator end, u32_iterator outputIt
 
 template <typename u8_iterator>
 std::size_t u8_to_u32_length(u8_iterator start, u8_iterator end) {
+
   std::size_t count = 0;
   while (start < end) {
-    switch (detail::sequence_length(*start++)) {
+    switch (detail::sequence_length(static_cast<std::uint8_t>(*start++))) {
     case 1:
       break;
     case 2:
@@ -849,7 +865,7 @@ template <typename CharT, std::enable_if_t<sizeof(CharT) == sizeof(char), std::n
 std::size_t u8_length(const CharT* str, std::size_t size) noexcept {
   std::size_t dist = 0;
 
-  for (std::size_t i = 0; i < size; i += detail::sequence_length(str[i])) {
+  for (std::size_t i = 0; i < size; i += detail::sequence_length(static_cast<std::uint8_t>(str[i]))) {
     dist++;
   }
 
@@ -860,10 +876,11 @@ template <typename u16_iterator, typename u8_iterator>
 u8_iterator u16_to_u8(u16_iterator start, u16_iterator end, u8_iterator outputIt) {
   while (start != end) {
     std::uint32_t cp = detail::cast_16(*start++);
+    //
 
     // Take care of surrogate pairs first.
-    if (detail::is_high_surrogate(cp)) {
-      cp = (cp << 10) + ((std::uint32_t)detail::cast_16(*start++)) + detail::k_surrogate_offset;
+    if (detail::is_high_surrogate(static_cast<char16_t>(cp))) {
+      cp = (cp << 10) + static_cast<std::uint32_t>(detail::cast_16(*start++)) + detail::k_surrogate_offset;
     }
 
     outputIt = append_u32_to_u8(cp, outputIt);
@@ -874,15 +891,17 @@ u8_iterator u16_to_u8(u16_iterator start, u16_iterator end, u8_iterator outputIt
 
 template <typename u16_iterator, typename u32_iterator>
 u32_iterator u16_to_u32(u16_iterator start, u16_iterator end, u32_iterator outputIt) {
+  using ctype = detail::output_iterator_value_type_t<u32_iterator>;
+
   while (start != end) {
     std::uint32_t cp = detail::cast_16(*start++);
 
     // Take care of surrogate pairs first.
-    if (detail::is_high_surrogate(cp)) {
-      cp = (cp << 10) + ((std::uint32_t)detail::cast_16(*start++)) + detail::k_surrogate_offset;
+    if (detail::is_high_surrogate(static_cast<char16_t>(cp))) {
+      cp = (cp << 10) + static_cast<std::uint32_t>(detail::cast_16(*start++)) + detail::k_surrogate_offset;
     }
 
-    *outputIt++ = cp;
+    *outputIt++ = static_cast<ctype>(cp);
   }
 
   return outputIt;
@@ -895,8 +914,8 @@ std::size_t u16_to_u8_length(u16_iterator start, u16_iterator end) {
     std::uint32_t cp = detail::cast_16(*start++);
 
     // Take care of surrogate pairs first.
-    if (detail::is_high_surrogate(cp)) {
-      cp = (cp << 10) + ((std::uint32_t)detail::cast_16(*start++)) + detail::k_surrogate_offset;
+    if (detail::is_high_surrogate(static_cast<char16_t>(cp))) {
+      cp = (cp << 10) + static_cast<std::uint32_t>(detail::cast_16(*start++)) + detail::k_surrogate_offset;
     }
 
     count += code_point_size_u8(cp);
@@ -913,8 +932,8 @@ std::size_t u16_to_u32_length(u16_iterator start, u16_iterator end) {
     std::uint32_t cp = detail::cast_16(*start++);
 
     // Take care of surrogate pairs first.
-    if (detail::is_high_surrogate(cp)) {
-      cp = (cp << 10) + ((std::uint32_t)detail::cast_16(*start++)) + detail::k_surrogate_offset;
+    if (detail::is_high_surrogate(static_cast<char16_t>(cp))) {
+      cp = (cp << 10) + static_cast<std::uint32_t>(detail::cast_16(*start++)) + detail::k_surrogate_offset;
     }
 
     count++;
@@ -940,8 +959,9 @@ std::size_t u16_length(const CharT* str, std::size_t size) noexcept {
 
 template <typename u8_iterator, typename u32_iterator>
 u8_iterator u32_to_u8(u32_iterator start, u32_iterator end, u8_iterator outputIt) {
+
   while (start != end) {
-    outputIt = append_u32_to_u8(*start++, outputIt);
+    outputIt = append_u32_to_u8(static_cast<std::uint32_t>(*start++), outputIt);
   }
 
   return outputIt;
@@ -952,7 +972,7 @@ u16_iterator u32_to_u16(u32_iterator start, u32_iterator end, u16_iterator outpu
   while (start != end) {
     std::uint32_t cp = static_cast<std::uint32_t>(*start++);
 
-    using value_type = utf::detail::output_iterator_value_type_t<u16_iterator>;
+    using value_type = unicode::detail::output_iterator_value_type_t<u16_iterator>;
 
     if (cp <= 0x0000FFFF) {
       // UTF-16 surrogate values are illegal in UTF-32
@@ -985,7 +1005,7 @@ std::size_t u32_to_u8_length(u32_iterator start, u32_iterator end) {
   std::size_t count = 0;
 
   while (start != end) {
-    count += static_cast<std::size_t>(code_point_size_u8(*start++));
+    count += code_point_size_u8(static_cast<std::uint32_t>(*start++));
   }
 
   return count;
@@ -1011,11 +1031,11 @@ std::size_t u32_length(const CharT*, std::size_t size) noexcept {
 template <typename CharT, typename SType,
     std::enable_if_t<is_string_type<SType>::value && is_char_type<CharT>::value, std::nullptr_t>>
 inline std::size_t convert_size(const SType& str) {
-  using input_char_type = utf::string_char_type_t<SType>;
-  constexpr encoding input_encoding = utf::encoding_of<input_char_type>::value;
+  using input_char_type = unicode::string_char_type_t<SType>;
+  constexpr encoding input_encoding = unicode::encoding_of<input_char_type>::value;
 
   using output_char_type = CharT;
-  constexpr encoding output_encoding = utf::encoding_of<output_char_type>::value;
+  constexpr encoding output_encoding = unicode::encoding_of<output_char_type>::value;
 
   std::basic_string_view<input_char_type> input_view(str);
 
@@ -1069,17 +1089,18 @@ inline std::size_t convert_size(const SType& str) {
 template <typename CharT, typename SType,
     std::enable_if_t<is_string_type<SType>::value && is_char_type<CharT>::value, std::nullptr_t>>
 inline std::basic_string<CharT> convert_as(const SType& str) {
-  using input_char_type = utf::string_char_type_t<SType>;
-  constexpr encoding input_encoding = utf::encoding_of<input_char_type>::value;
+  using input_char_type = unicode::string_char_type_t<SType>;
+  constexpr encoding input_encoding = unicode::encoding_of<input_char_type>::value;
 
   using output_char_type = CharT;
-  constexpr encoding output_encoding = utf::encoding_of<output_char_type>::value;
+  constexpr encoding output_encoding = unicode::encoding_of<output_char_type>::value;
 
   std::basic_string_view<input_char_type> input_view(str);
 
   if constexpr (input_encoding == encoding::utf8) {
     if constexpr (output_encoding == encoding::utf8) {
-      return std::basic_string<output_char_type>((const output_char_type*)input_view.data(), input_view.size());
+      return std::basic_string<output_char_type>(
+          reinterpret_cast<const output_char_type*>(input_view.data()), input_view.size());
     }
     else if constexpr (output_encoding == encoding::utf16) {
       std::basic_string<output_char_type> output;
@@ -1102,7 +1123,8 @@ inline std::basic_string<CharT> convert_as(const SType& str) {
       return output;
     }
     else if constexpr (output_encoding == encoding::utf16) {
-      return std::basic_string<output_char_type>((const output_char_type*)input_view.data(), input_view.size());
+      return std::basic_string<output_char_type>(
+          reinterpret_cast<const output_char_type*>(input_view.data()), input_view.size());
     }
     else if constexpr (output_encoding == encoding::utf32) {
       std::basic_string<output_char_type> output;
@@ -1125,7 +1147,8 @@ inline std::basic_string<CharT> convert_as(const SType& str) {
       return output;
     }
     else if constexpr (output_encoding == encoding::utf32) {
-      return std::basic_string<output_char_type>((const output_char_type*)input_view.data(), input_view.size());
+      return std::basic_string<output_char_type>(
+          reinterpret_cast<const output_char_type*>(input_view.data()), input_view.size());
     }
     else {
       return {};
@@ -1139,8 +1162,8 @@ inline std::basic_string<CharT> convert_as(const SType& str) {
 template <class SType, std::enable_if_t<is_string_type<SType>::value, std::nullptr_t>>
 class convert {
 public:
-  using input_char_type = utf::string_char_type_t<SType>;
-  static constexpr encoding input_encoding = utf::encoding_of<input_char_type>::value;
+  using input_char_type = unicode::string_char_type_t<SType>;
+  static constexpr encoding input_encoding = unicode::encoding_of<input_char_type>::value;
 
   inline convert(const SType& str)
       : _input_view(str) {}
@@ -1154,21 +1177,24 @@ private:
   std::basic_string_view<input_char_type> _input_view;
 };
 
+template <class SType>
+convert(const SType&) -> convert<SType>;
+
 template <class SType, class OutputIt, std::enable_if_t<is_string_type<SType>::value, std::nullptr_t>>
 inline OutputIt copy(const SType& str, OutputIt outputIt) {
 
-  using input_char_type = utf::string_char_type_t<SType>;
-  constexpr encoding input_encoding = utf::encoding_of<input_char_type>::value;
+  using input_char_type = unicode::string_char_type_t<SType>;
+  constexpr encoding input_encoding = unicode::encoding_of<input_char_type>::value;
 
   using output_char_type = detail::output_iterator_value_type_t<OutputIt>;
-  constexpr encoding output_encoding = utf::encoding_of<output_char_type>::value;
+  constexpr encoding output_encoding = unicode::encoding_of<output_char_type>::value;
 
   std::basic_string_view<input_char_type> input_view(str);
 
   if constexpr (input_encoding == encoding::utf8) {
     if constexpr (output_encoding == encoding::utf8) {
       for (std::size_t i = 0; i < input_view.size(); i++) {
-        *outputIt++ = (output_char_type)input_view[i];
+        *outputIt++ = static_cast<output_char_type>(input_view[i]);
       }
       return outputIt;
     }
@@ -1185,7 +1211,7 @@ inline OutputIt copy(const SType& str, OutputIt outputIt) {
     }
     else if constexpr (output_encoding == encoding::utf16) {
       for (std::size_t i = 0; i < input_view.size(); i++) {
-        *outputIt++ = (output_char_type)input_view[i];
+        *outputIt++ = static_cast<output_char_type>(input_view[i]);
       }
       return outputIt;
     }
@@ -1202,7 +1228,7 @@ inline OutputIt copy(const SType& str, OutputIt outputIt) {
     }
     else if constexpr (output_encoding == encoding::utf32) {
       for (std::size_t i = 0; i < input_view.size(); i++) {
-        *outputIt++ = (output_char_type)input_view[i];
+        *outputIt++ = static_cast<output_char_type>(input_view[i]);
       }
       return outputIt;
     }
@@ -1211,8 +1237,8 @@ inline OutputIt copy(const SType& str, OutputIt outputIt) {
 
 template <class SType, std::enable_if_t<is_string_type<SType>::value, std::nullptr_t>>
 inline std::size_t length(const SType& str) {
-  using input_char_type = utf::string_char_type_t<SType>;
-  constexpr encoding input_encoding = utf::encoding_of<input_char_type>::value;
+  using input_char_type = unicode::string_char_type_t<SType>;
+  constexpr encoding input_encoding = unicode::encoding_of<input_char_type>::value;
 
   std::basic_string_view<input_char_type> input_view(str);
 
@@ -1233,17 +1259,29 @@ inline std::size_t length(const SType& str) {
 namespace detail {
   template <encoding Encoding = encoding::utf8>
   struct iterator_sequence_length {
-    static inline constexpr std::size_t length(std::uint8_t lead) noexcept { return sequence_length(lead); }
+
+    template <typename T>
+    static inline constexpr std::size_t length(T lead) noexcept {
+      return sequence_length(static_cast<std::uint8_t>(lead));
+    }
   };
 
   template <>
   struct iterator_sequence_length<encoding::utf16> {
-    static inline constexpr std::size_t length(std::int16_t c) noexcept { return u16_sequence_length((char16_t)c); }
+
+    template <typename T>
+    static inline constexpr std::size_t length(T c) noexcept {
+      return u16_sequence_length(static_cast<char16_t>(c));
+    }
   };
 
   template <>
   struct iterator_sequence_length<encoding::utf32> {
-    static inline constexpr std::size_t length(std::int32_t) noexcept { return 1; }
+
+    template <typename T>
+    static inline constexpr std::size_t length(T) noexcept {
+      return 1;
+    }
   };
 
   template <typename InputCharT, typename OutputChart, typename = void>
@@ -1263,11 +1301,13 @@ namespace detail {
 
     template <typename Iterator>
     static inline output_view_type get(Iterator it) {
-      return output_view_type((const output_char_type*)&(it[0]), it_seq_length::length(*it));
+      return output_view_type(reinterpret_cast<const output_char_type*>(&(it[0])), it_seq_length::length(*it));
     }
 
     template <typename Iterator>
     static inline void advance(Iterator& it) {
+      //  using value_type = unicode::detail::output_iterator_value_type_t<u16_iterator>;
+
       std::advance(it, it_seq_length::length(*it));
     }
   };
@@ -1287,7 +1327,8 @@ namespace detail {
     template <typename Iterator>
     inline output_view_type get(Iterator it) const {
       return output_view_type(_data.begin(),
-          std::distance(_data.begin(), utf::copy(input_view_type(&it[0], it_seq_length::length(*it)), _data.begin())));
+          static_cast<std::size_t>(std::distance(
+              _data.begin(), unicode::copy(input_view_type(&it[0], it_seq_length::length(*it)), _data.begin()))));
     }
 
     template <typename Iterator>
@@ -1299,7 +1340,7 @@ namespace detail {
   };
 
   template <class IteratorType>
-  using iterator_value_type = utf::remove_cvref_t<decltype(std::declval<IteratorType>()[0])>;
+  using iterator_value_type = unicode::remove_cvref_t<decltype(std::declval<IteratorType>()[0])>;
 
   template <class IteratorType>
   using iterator_base_type = basic_iterator<iterator_value_type<IteratorType>,
@@ -1327,9 +1368,10 @@ namespace detail {
 
 } // namespace detail.
 
+NANO_UNICODE_CLANG_PUSH_WARNING("-Wpadded")
 template <class CharT, class SType, class IteratorType, std::enable_if_t<is_string_type<SType>::value, std::nullptr_t>>
-class basic_iterator : private detail::base_iterator<utf::string_char_type_t<SType>, CharT> {
-  using base_type = detail::base_iterator<utf::string_char_type_t<SType>, CharT>;
+class basic_iterator : private detail::base_iterator<unicode::string_char_type_t<SType>, CharT> {
+  using base_type = detail::base_iterator<unicode::string_char_type_t<SType>, CharT>;
   using output_view_type = typename base_type::output_view_type;
 
   template <class T>
@@ -1366,6 +1408,7 @@ public:
 private:
   IteratorType _it;
 };
+NANO_UNICODE_CLANG_POP_WARNING()
 
 template <typename CharT, typename SType>
 inline auto iterate_as(const SType& str) {
@@ -1383,13 +1426,13 @@ inline auto iterate(const SType& str) {
 //   return detail::iterator_range<basic_iterator<char, SType, typename SType::const_iterator>>(str);
 // }
 //
-//#ifdef UNICODE_CPP_20
+//#ifdef NANO_UNICODE_CPP_20
 // template <typename SType,
 //     std::enable_if_t<std::is_constructible<SType, std::u8string_view>::value, std::nullptr_t> = nullptr>
 // inline auto iterate(const SType& str) {
 //   return detail::iterator_range<basic_iterator<char8_t, SType, typename SType::const_iterator>>(str);
 // }
-//#endif // UNICODE_CPP_20
+//#endif // NANO_UNICODE_CPP_20
 //
 // template <typename SType,
 //     std::enable_if_t<std::is_constructible<SType, std::u16string_view>::value, std::nullptr_t> = nullptr>
@@ -1445,12 +1488,17 @@ private:
   IteratorType _it;
 };
 
+template <class IteratorType>
+iterator(IteratorType) -> iterator<IteratorType>;
+
 //
 //
 //
 template <typename T, std::enable_if_t<is_string_type<remove_cvref_t<T>>::value, std::nullptr_t>>
 string_view::string_view(T&& s)
-    : string_view(make<T>(std::forward<T>(s))) {}
+    : string_view(make<T>(std::forward<T>(s))) {
+  (void)m_reserved;
+}
 
 string_view::string_view() noexcept
     : m_data()
@@ -1460,73 +1508,73 @@ string_view::string_view() noexcept
 
 string_view::string_view(const std::string& str, normal_tag) noexcept
     : m_data{ str.c_str() }
-    , m_size((std::uint32_t)str.size())
+    , m_size(static_cast<std::uint32_t>(str.size()))
     , m_charSize(sizeof(char))
     , m_nullTerminated(true) {}
 
 string_view::string_view(const std::u16string& str, normal_tag) noexcept
     : m_data{ str.c_str() }
-    , m_size((std::uint32_t)str.size())
+    , m_size(static_cast<std::uint32_t>(str.size()))
     , m_charSize(sizeof(char16_t))
     , m_nullTerminated(true) {}
 
 string_view::string_view(const std::u32string& str, normal_tag) noexcept
     : m_data{ str.c_str() }
-    , m_size((std::uint32_t)str.size())
+    , m_size(static_cast<std::uint32_t>(str.size()))
     , m_charSize(sizeof(char32_t))
     , m_nullTerminated(true) {}
 
 string_view::string_view(const std::wstring& str, normal_tag) noexcept
     : m_data{ str.c_str() }
-    , m_size((std::uint32_t)str.size())
+    , m_size(static_cast<std::uint32_t>(str.size()))
     , m_charSize(sizeof(wchar_t))
     , m_nullTerminated(true) {}
 
 string_view::string_view(std::string_view str, normal_tag) noexcept
     : m_data{ str.data() }
-    , m_size((std::uint32_t)str.size())
+    , m_size(static_cast<std::uint32_t>(str.size()))
     , m_charSize(sizeof(char))
     , m_nullTerminated(false) {}
 
 string_view::string_view(std::u16string_view str, normal_tag) noexcept
     : m_data{ str.data() }
-    , m_size((std::uint32_t)str.size())
+    , m_size(static_cast<std::uint32_t>(str.size()))
     , m_charSize(sizeof(char16_t))
     , m_nullTerminated(false) {}
 
 string_view::string_view(std::u32string_view str, normal_tag) noexcept
     : m_data{ str.data() }
-    , m_size((std::uint32_t)str.size())
+    , m_size(static_cast<std::uint32_t>(str.size()))
     , m_charSize(sizeof(char32_t))
     , m_nullTerminated(false) {}
 
 string_view::string_view(std::wstring_view str, normal_tag) noexcept
     : m_data{ str.data() }
-    , m_size((std::uint32_t)str.size())
+    , m_size(static_cast<std::uint32_t>(str.size()))
     , m_charSize(sizeof(wchar_t))
     , m_nullTerminated(false) {}
 
 string_view::string_view(std::string_view str, null_terminated_tag) noexcept
     : m_data{ str.data() }
-    , m_size((std::uint32_t)str.size())
+    , m_size(static_cast<std::uint32_t>(str.size()))
     , m_charSize(sizeof(char))
     , m_nullTerminated(true) {}
 
 string_view::string_view(std::u16string_view str, null_terminated_tag) noexcept
     : m_data{ str.data() }
-    , m_size((std::uint32_t)str.size())
+    , m_size(static_cast<std::uint32_t>(str.size()))
     , m_charSize(sizeof(char16_t))
     , m_nullTerminated(true) {}
 
 string_view::string_view(std::u32string_view str, null_terminated_tag) noexcept
     : m_data{ str.data() }
-    , m_size((std::uint32_t)str.size())
+    , m_size(static_cast<std::uint32_t>(str.size()))
     , m_charSize(sizeof(char32_t))
     , m_nullTerminated(true) {}
 
 string_view::string_view(std::wstring_view str, null_terminated_tag) noexcept
     : m_data{ str.data() }
-    , m_size((std::uint32_t)str.size())
+    , m_size(static_cast<std::uint32_t>(str.size()))
     , m_charSize(sizeof(wchar_t))
     , m_nullTerminated(true) {}
 
@@ -1543,21 +1591,21 @@ string_view::content::content(const char32_t* s) noexcept
     : c32(s) {}
 
 string_view::content::content(const wchar_t* s) noexcept
-    : content([](const wchar_t* s) {
+    : content([](const wchar_t* ws) {
       if constexpr (sizeof(wchar_t) == sizeof(char16_t)) {
-        return content((const char16_t*)s);
+        return content(reinterpret_cast<const char16_t*>(ws));
       }
       else {
-        return content((const char32_t*)s);
+        return content(reinterpret_cast<const char32_t*>(ws));
       }
     }(s)) {}
 
 const wchar_t* string_view::content::cw() const noexcept {
   if constexpr (sizeof(wchar_t) == sizeof(char16_t)) {
-    return (const wchar_t*)(const void*)c16;
+    return reinterpret_cast<const wchar_t*>(c16);
   }
   else {
-    return (const wchar_t*)c32;
+    return reinterpret_cast<const wchar_t*>(c32);
   }
 }
 
@@ -1824,10 +1872,10 @@ std::wstring string_view::to_wide() const {
 std::size_t string_view::count() const {
   switch (encoding()) {
   case encoding::utf8:
-    return utf::length(view<char>());
+    return unicode::length(view<char>());
 
   case encoding::utf16:
-    return utf::length(view<char16_t>());
+    return unicode::length(view<char16_t>());
 
   case encoding::utf32:
     return size();
@@ -1881,4 +1929,4 @@ inline std::basic_string_view<char32_t> string_view::u32view() const noexcept { 
 
 /// Same as view<wchar_t>().
 inline std::wstring_view string_view::wview() const noexcept { return view<wchar_t>(); }
-} // namespace utf
+} // namespace nano::unicode

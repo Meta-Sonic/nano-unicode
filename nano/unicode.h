@@ -1308,8 +1308,8 @@ namespace detail {
     template <typename Iterator>
     static inline void advance(Iterator& it) {
       //  using value_type = unicode::detail::output_iterator_value_type_t<u16_iterator>;
-
-      std::advance(it, it_seq_length::length(*it));
+      using it_diff_type = typename std::iterator_traits<Iterator>::difference_type;
+      std::advance(it, static_cast<it_diff_type>(it_seq_length::length(*it)));
     }
   };
 
@@ -1334,7 +1334,8 @@ namespace detail {
 
     template <typename Iterator>
     inline void advance(Iterator& it) {
-      std::advance(it, it_seq_length::length(*it));
+      using it_diff_type = typename std::iterator_traits<Iterator>::difference_type;
+      std::advance(it, static_cast<it_diff_type>(it_seq_length::length(*it)));
     }
 
     mutable std::array<output_char_type, encoding_to_max_char_count<encoding_of<OutputCharT>::value>::value> _data;

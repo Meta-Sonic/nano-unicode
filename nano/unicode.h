@@ -362,7 +362,7 @@ public:
   inline std::size_t count() const;
 
   /// Returns the encoding.
-  inline encoding encoding() const noexcept;
+  inline enum encoding encoding() const noexcept;
 
   /// Returns a pointer to a null-terminated character array with data equivalent to those
   /// stored in the string. The pointer is such that the range [c_str(); c_str() + size()]
@@ -1578,7 +1578,7 @@ const wchar_t* string_view::content::cw() const noexcept {
   }
 }
 
-encoding string_view::encoding() const noexcept {
+enum encoding string_view::encoding() const noexcept {
   switch (char_size()) {
   case sizeof(char):
     return encoding::utf8;
